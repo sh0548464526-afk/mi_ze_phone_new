@@ -4,29 +4,56 @@ import os
 
 app = Flask(__name__)
 
-# חיבור למסד (תשים ב-Render ENV בשם DATABASE_URL)
-conn = psycopg2.connect(os.environ['DATABASE_URL'])
-conn.autocommit = True
+# =====================
+# חיבור דינמי ל-DB (תיקון Render)
+# =====================
+
+def get_conn():
+    return psycopg2.connect(os.environ['DATABASE_URL'])
 
 
 # =====================
-# פונקציות עזר
+# עזר
 # =====================
 
-def get_last(val):
+def last(val):
     if not val:
         return None
-    if isinstance(val, list):
-        return val[-1]
-    return val
+    return val[-1]
 
 
 def count(val):
     if not val:
         return 0
-    if isinstance(val, list):
-        return len(val)
-    return 1
+    return len(val)
+
+
+# =====================
+# DB
+# =====================
+
+def get_name(phone):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT name FROM contacts WHERE phone=%s", (phone,))
+    row = cur.fetchone()
+
+    conn.close()
+    return row[0] if row else None
+
+
+def save_name(phone, name):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO contacts(phone,name) VALUES(%s,%s)",
+        (phone, name)
+    )
+
+    conn.commit()
+    conn.close()
 
 
 # =====================
@@ -72,11 +99,12 @@ def decode_enp(code):
 
 
 # =====================
-# איות שם
+# איות (רק כאן f-in)
 # =====================
 
 def spell_name(name):
-    parts = []
+    parts = ["f-in"]
+
     for ch in name:
         if ch == " ":
             parts.append("f-רווח")
@@ -84,80 +112,68 @@ def spell_name(name):
             parts.append("f-גרש")
         else:
             parts.append(f"f-{ch}")
+
     return ".".join(parts)
 
 
 # =====================
-# DB
-# =====================
-
-def get_name(phone):
-    cur = conn.cursor()
-    cur.execute("SELECT name FROM contacts WHERE phone=%s", (phone,))
-    row = cur.fetchone()
-    return row[0] if row else None
-
-
-def save_name(phone, name):
-    cur = conn.cursor()
-    cur.execute("INSERT INTO contacts(phone,name) VALUES(%s,%s)", (phone, name))
-
-
-# =====================
-# ה־API
+# API ראשי
 # =====================
 
 @app.route("/", methods=["GET", "POST"])
 def api():
+
     q = request.args
 
-    phone = get_last(q.getlist("phone"))
-    nm = get_last(q.getlist("nm"))
-    ym = get_last(q.getlist("ym"))
+    phone = last(q.getlist("phone"))
+    nm = last(q.getlist("nm"))
+    ym = last(q.getlist("ym"))
+
     enp_arr = q.getlist("enp")
     epi_arr = q.getlist("epi")
 
-    enp_last = get_last(enp_arr)
-    epi_last = get_last(epi_arr)
+    enp_last = last(enp_arr)
+    epi_last = last(epi_arr)
 
     enp_count = count(enp_arr)
     epi_count = count(epi_arr)
 
     # =====================
-    # 1. אין טלפון
+    # אין טלפון
     # =====================
     if not phone:
         return "read=f-ep=phone,,,,,NO,yes,,,,,,,,no"
 
     # =====================
-    # בדיקת DB
+    # בדיקת שם במסד
     # =====================
     name_in_db = get_name(phone)
 
     # =====================
-    # מצב: אין שם במסד
+    # אין שם במסד
     # =====================
     if not name_in_db:
 
-        # אין nm ו ym
         if not nm and not ym:
             return "read=f-nm=nm,,1,1,,NO,yes,,,123,,,,,no"
 
-        # בחירת nm
         if nm and not enp_arr:
+            if nm == "1":
+                # 🔥 שינוי שביקשת
+                return "read=f-enp=enp,,,,,NO,,,*/,,,,,,no"
+
             if nm == "2":
                 return "go_to_folder=."
+
             if nm == "3":
                 return "go_to_folder=.."
-            if nm == "1":
-                return "read=f-enp=enp,,,,,NO,yes,,*/,,,,,,no"
 
-        # יש enp חדש
+        # הזנת שם
         if enp_count > epi_count:
             name = decode_enp(enp_last)
             return f"id_list_message=f-tni.t-{name}&read=f-epi=epi,,1,1,,NO,yes,,,12"
 
-        # יש אישור
+        # אישור
         if enp_count == epi_count and enp_count > 0:
 
             if epi_last == "1":
@@ -166,36 +182,34 @@ def api():
                 return "id_list_message=f-eno"
 
             if epi_last == "2":
-                return "read=f-enp=enp,,,,,NO,yes,,*/,,,,,,no"
+                # 🔥 שינוי שביקשת
+                return "read=f-enp=enp,,,,,NO,,,*/,,,,,,no"
 
     # =====================
-    # מצב: יש שם במסד
+    # יש שם במסד
     # =====================
     else:
 
-        # תפריט ראשוני
         if not ym:
             return f"id_list_message=f-n.t-{name_in_db}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
 
-        # ym פעולות
+        if ym == "1":
+            return f"id_list_message=f-n.t-{name_in_db}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
+
+        if ym == "2":
+            return f"id_list_message={spell_name(name_in_db)}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
+
         if ym == "3":
             return "go_to_folder=."
 
         if ym == "4":
             return "go_to_folder=.."
 
-        if ym == "1":
-            return f"id_list_message=f-n.t-{name_in_db}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
-
-        if ym == "2":
-            spelled = spell_name(name_in_db)
-            return f"id_list_message={spelled}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
-
     return "id_list_message=שגיאה"
 
 
 # =====================
-# הרצה
+# run
 # =====================
 
 if __name__ == "__main__":
