@@ -76,8 +76,7 @@ def decode_enp(code):
 # =====================
 
 def spell_name(name):
-    parts = ["f-in"]
-
+    parts = []
     for ch in name:
         if ch == " ":
             parts.append("f-רווח")
@@ -85,7 +84,6 @@ def spell_name(name):
             parts.append("f-גרש")
         else:
             parts.append(f"f-{ch}")
-
     return ".".join(parts)
 
 
