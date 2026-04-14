@@ -125,7 +125,7 @@ def api():
                 save_name(phone, name)
 
                 # 🔥 שינוי שביקשת
-                return "id_list_message=f-eno&read=f-epi=epi,,1,1,,NO,yes,,,12,,,,,no"
+                return "id_list_message=f-eno"
 
             if epi_last == "2":
                 return "read=f-enp=enp,,,,,NO,,,*/,,,,,,no"
