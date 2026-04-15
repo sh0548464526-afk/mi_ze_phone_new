@@ -96,8 +96,9 @@ def api():
     enp_count = count(enp_arr)
     epi_count = count(epi_arr)
 
+    # 🔧 שינוי 2 – הסרת yes
     if not phone:
-        return "read=f-ep=phone,,,,,NO,yes,,,,,,,,no"
+        return "read=f-ep=phone,,,,,NO,,,,,,,,,no"
 
     name_in_db = get_name(phone)
 
@@ -123,8 +124,6 @@ def api():
             if epi_last == "1":
                 name = decode_enp(enp_last)
                 save_name(phone, name)
-
-                # 🔥 שינוי שביקשת
                 return "id_list_message=f-eno"
 
             if epi_last == "2":
@@ -132,11 +131,13 @@ def api():
 
     else:
 
+        # 🔧 שינוי 1 – שם בתוך read
         if not ym:
-            return f"id_list_message=f-n.t-{name_in_db}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
+            return f"read=f-n.t-{name_in_db}.f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
 
+        # 🔧 שינוי 1 – שם בתוך read
         if ym == "1":
-            return f"id_list_message=f-n.t-{name_in_db}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
+            return f"read=f-n.t-{name_in_db}.f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
 
         if ym == "2":
             return f"id_list_message={spell_name(name_in_db)}&read=f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
