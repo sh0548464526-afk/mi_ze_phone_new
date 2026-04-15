@@ -206,7 +206,7 @@ def personal():
     if pm and not epm_arr:
 
         if pm == "2":
-            return "go_to_folder=."
+            return "go_to_folder=.."
 
         if pm == "1":
             return "read=f-epm=epm,,,,,NO,,,*/,,,,,,no"
