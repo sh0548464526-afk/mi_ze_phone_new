@@ -1,6 +1,9 @@
 ﻿from flask import Flask, request
 import psycopg2
 import os
+import threading
+import time
+import requests
 
 app = Flask(__name__)
 
@@ -78,6 +81,9 @@ def spell_name(name):
             parts.append(f"f-{ch}")
     return ".".join(parts)
 
+# =====================
+# שלוחה ראשית
+# =====================
 @app.route("/", methods=["GET","POST"])
 def api():
 
@@ -96,7 +102,6 @@ def api():
     enp_count = count(enp_arr)
     epi_count = count(epi_arr)
 
-    # 🔧 שינוי 2 – הסרת yes
     if not phone:
         return "read=f-ep=phone,,,,,NO,,,,,,,,,no"
 
@@ -115,9 +120,10 @@ def api():
             if nm == "3":
                 return "go_to_folder=.."
 
+        # 🔥 כאן התיקון שביקשת
         if enp_count > epi_count:
             name = decode_enp(enp_last)
-            return f"id_list_message=f-tni.t-{name}&read=f-epi=epi,,1,1,,NO,yes,,,12,,,,,no"
+            return f"read=f-tni.t-{name}.f-epi=epi,,1,1,,NO,yes,,,12,,,,,no"
 
         if enp_count == epi_count and enp_count > 0:
 
@@ -131,11 +137,9 @@ def api():
 
     else:
 
-        # 🔧 שינוי 1 – שם בתוך read
         if not ym:
             return f"read=f-n.t-{name_in_db}.f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
 
-        # 🔧 שינוי 1 – שם בתוך read
         if ym == "1":
             return f"read=f-n.t-{name_in_db}.f-ym=ym,,1,1,,NO,yes,,,1234,,,,,no"
 
@@ -150,5 +154,78 @@ def api():
 
     return "id_list_message=שגיאה"
 
+
+# =====================
+# שלוחה אישית
+# =====================
+@app.route("/personal", methods=["GET","POST"])
+def personal():
+
+    q = request.args
+
+    phone = last(q.getlist("ApiPhone"))
+    pm = last(q.getlist("pm"))
+
+    epm_arr = q.getlist("epm")
+    opm_arr = q.getlist("opm")
+
+    epm_last = last(epm_arr)
+    opm_last = last(opm_arr)
+
+    epm_count = count(epm_arr)
+    opm_count = count(opm_arr)
+
+    if not phone:
+        return "id_list_message=שגיאה"
+
+    name_in_db = get_name(phone)
+
+    if not pm:
+
+        if name_in_db:
+            return f"read=f-nisi.t-{name_in_db}.f-pym=pm,,1,1,,NO,yes,,,12,,,,,no"
+        else:
+            return "read=f-pnm=pm,,1,1,,NO,yes,,,12,,,,,no"
+
+    if pm and not epm_arr:
+
+        if pm == "2":
+            return "go_to_folder=."
+
+        if pm == "1":
+            return "read=f-epm=epm,,,,,NO,,,*/,,,,,,no"
+
+    if epm_count > opm_count:
+        name = decode_enp(epm_last)
+        return f"read=f-tni.t-{name}.f-opm=opm,,1,1,,NO,yes,,,12,,,,,no"
+
+    if epm_count == opm_count and epm_count > 0:
+
+        if opm_last == "1":
+            name = decode_enp(epm_last)
+            save_name(phone, name)
+            return "id_list_message=f-eno"
+
+        if opm_last == "2":
+            return "read=f-epm=epm,,,,,NO,,,*/,,,,,,no"
+
+    return "id_list_message=שגיאה"
+
+
+# =====================
+# מניעת שינה – פנימי
+# =====================
+def keep_alive():
+    url = os.environ.get("SELF_URL")
+    while True:
+        try:
+            if url:
+                requests.get(url)
+        except:
+            pass
+        time.sleep(300)
+
+
 if __name__ == "__main__":
+    threading.Thread(target=keep_alive, daemon=True).start()
     app.run(host="0.0.0.0", port=10000)
