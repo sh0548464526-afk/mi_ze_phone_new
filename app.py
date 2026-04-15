@@ -28,10 +28,27 @@ def get_name(phone):
     conn.close()
     return row[0] if row else None
 
+# ❗ נשאר כמו שהיה (לא נגענו)
 def save_name(phone, name):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("INSERT INTO contacts(phone,name) VALUES(%s,%s)", (phone, name))
+    conn.commit()
+    conn.close()
+
+# 🔥 חדש – רק לשלוחה האישית
+def save_name_personal(phone, name):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT 1 FROM contacts WHERE phone=%s", (phone,))
+    exists = cur.fetchone()
+
+    if exists:
+        cur.execute("UPDATE contacts SET name=%s WHERE phone=%s", (name, phone))
+    else:
+        cur.execute("INSERT INTO contacts(phone,name) VALUES(%s,%s)", (phone, name))
+
     conn.commit()
     conn.close()
 
@@ -120,7 +137,6 @@ def api():
             if nm == "3":
                 return "go_to_folder=.."
 
-        # 🔥 כאן התיקון שביקשת
         if enp_count > epi_count:
             name = decode_enp(enp_last)
             return f"read=f-tni.t-{name}.f-epi=epi,,1,1,,NO,yes,,,12,,,,,no"
@@ -203,7 +219,7 @@ def personal():
 
         if opm_last == "1":
             name = decode_enp(epm_last)
-            save_name(phone, name)
+            save_name_personal(phone, name)  # 🔥 כאן השינוי היחיד
             return "id_list_message=f-eno"
 
         if opm_last == "2":
@@ -213,7 +229,7 @@ def personal():
 
 
 # =====================
-# מניעת שינה – פנימי
+# מניעת שינה
 # =====================
 def keep_alive():
     url = os.environ.get("SELF_URL")
